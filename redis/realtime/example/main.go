@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
-	"github.com/redis/go-redis/v9"
 	"github.com/christopherdavenport/gocircuit"
 	gcredis "github.com/christopherdavenport/gocircuit/redis/realtime"
+	"github.com/redis/go-redis/v9"
+	"time"
 )
 
 func main() {
@@ -17,10 +17,10 @@ func main() {
 		Addr: "localhost:6379",
 	})
 	circuitBreakerSettings := gcredis.CircuitBreakerSettings{
-		Prefix: "circuitBreaker",
+		Prefix:          "circuitBreaker",
 		RedisKeyTimeout: 5 * time.Minute,
 
-		Interval: 1 * time.Minute,
+		Interval:    1 * time.Minute,
 		OpenTimeout: 10 * time.Second,
 
 		OnStateChange: func(old gocircuit.State, new gocircuit.State) error {
@@ -37,7 +37,7 @@ func main() {
 
 	err := rdb.FlushAll(ctx).Err()
 	if err != nil {
-	  fmt.Println(err)
+		fmt.Println(err)
 		return
 	}
 
@@ -55,7 +55,7 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
-	_, err = cb.Protect(ctx,  func() (interface{}, error) {
+	_, err = cb.Protect(ctx, func() (interface{}, error) {
 		return nil, errors.New("error 3")
 	})
 	if err != nil {

@@ -13,7 +13,7 @@ import (
 type CircuitBreaker[A any] interface {
 	Protect(ctx context.Context, action func() (A, error)) (A, error)
 
-  // TODO: Two-Stage Approach
+	// TODO: Two-Stage Approach
 	// Check(ctx context.Context) (bool, error)
 	// Report(ctx context.Context, success bool) error
 }

@@ -1,6 +1,5 @@
 package realtime
 
-
 import (
 	"context"
 	"fmt"
@@ -8,18 +7,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/christopherdavenport/gocircuit"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
-	"github.com/christopherdavenport/gocircuit"
 )
 
-
-
 type StateStruct struct {
-	State gocircuit.State
+	State    gocircuit.State
 	TimeOpen time.Time
 }
-
 
 var (
 	closedZero = StateStruct{State: gocircuit.StateClosed, TimeOpen: time.Time{}}
@@ -43,15 +39,15 @@ func StateStructToString(s StateStruct) (string, error) {
 		return "", err
 	}
 
-  switch s.State {
-		case gocircuit.StateClosed:
-			stateString = fmt.Sprintf("%s %d", stateString, s.TimeOpen.UnixNano())
-		case gocircuit.StateHalfOpen:
-			stateString = fmt.Sprintf("%s %d", stateString, s.TimeOpen.UnixNano())
-		case gocircuit.StateOpen:
-			stateString = fmt.Sprintf("%s %d", stateString, s.TimeOpen.UnixNano())
-		default:
-			return "", fmt.Errorf("unknown state: %d", s.State)
+	switch s.State {
+	case gocircuit.StateClosed:
+		stateString = fmt.Sprintf("%s %d", stateString, s.TimeOpen.UnixNano())
+	case gocircuit.StateHalfOpen:
+		stateString = fmt.Sprintf("%s %d", stateString, s.TimeOpen.UnixNano())
+	case gocircuit.StateOpen:
+		stateString = fmt.Sprintf("%s %d", stateString, s.TimeOpen.UnixNano())
+	default:
+		return "", fmt.Errorf("unknown state: %d", s.State)
 	}
 	return stateString, nil
 }
@@ -66,21 +62,16 @@ func StateStructFromString(s string) (StateStruct, error) {
 		return StateStruct{}, err
 	}
 	var timeOpen time.Time
-	if (len(parts) == 2){
+	if len(parts) == 2 {
 		timeOpen, err = timeFromString(parts[1])
 		if err != nil {
-		return StateStruct{}, err
+			return StateStruct{}, err
 		}
 	} else {
 		timeOpen = time.Time{}
 	}
 	return StateStruct{State: state, TimeOpen: timeOpen}, nil
 }
-
-
-
-
-
 
 func stateKey(prefix string, key string) string {
 	return fmt.Sprintf("%s:state:%s", prefix, key)
@@ -109,7 +100,7 @@ func halfOpenKey(prefix string, key string) string {
 }
 
 func timeFromString(s string) (time.Time, error) {
-	if (s == "") {
+	if s == "" {
 		return time.Time{}, fmt.Errorf("empty string")
 	}
 	i, err := strconv.ParseInt(s, 10, 64)
@@ -120,27 +111,26 @@ func timeFromString(s string) (time.Time, error) {
 }
 
 type circuitBreakerInfo struct {
-	Id uuid.UUID
-	State gocircuit.State
-  TimeOpen time.Time
+	Id       uuid.UUID
+	State    gocircuit.State
+	TimeOpen time.Time
 
-	TotalRequests int64
-	TotalSuccesses int64
-	TotalFailures int64
+	TotalRequests        int64
+	TotalSuccesses       int64
+	TotalFailures        int64
 	ConsecutiveSuccesses int64
-	ConsecutiveFailures int64
+	ConsecutiveFailures  int64
 }
 
-func (cbi circuitBreakerInfo) Counts()	Counts {
+func (cbi circuitBreakerInfo) Counts() Counts {
 	return Counts{
-		Requests: cbi.TotalRequests,
-		TotalSuccesses: cbi.TotalSuccesses,
-		TotalFailures: cbi.TotalFailures,
+		Requests:             cbi.TotalRequests,
+		TotalSuccesses:       cbi.TotalSuccesses,
+		TotalFailures:        cbi.TotalFailures,
 		ConsecutiveSuccesses: cbi.ConsecutiveSuccesses,
-		ConsecutiveFailures: cbi.ConsecutiveFailures,
+		ConsecutiveFailures:  cbi.ConsecutiveFailures,
 	}
 }
-
 
 func (cbi circuitBreakerInfo) String() string {
 	return fmt.Sprintf("CircuitBreakerInfo(Id: %s, State: %s, TimeOpen: %s, TotalRequests: %d, TotalSuccesses: %d, TotalFailures: %d, ConsecutiveSuccesses: %d, ConsecutiveFailures: %d)", cbi.Id, cbi.State, cbi.TimeOpen, cbi.TotalRequests, cbi.TotalSuccesses, cbi.TotalFailures, cbi.ConsecutiveSuccesses, cbi.ConsecutiveFailures)
@@ -171,7 +161,6 @@ func getInformation(client *redis.Client, ctx context.Context, key string, systi
 		return nil, err
 	}
 
-
 	if err == redis.Nil {
 		stateStruct = closedZero // If they key is unset, it is closed.
 	} else {
@@ -180,8 +169,6 @@ func getInformation(client *redis.Client, ctx context.Context, key string, systi
 			return nil, err
 		}
 	}
-
-
 
 	requestCount, err := requestCountCmd.Result()
 	if err != nil {
@@ -209,16 +196,15 @@ func getInformation(client *redis.Client, ctx context.Context, key string, systi
 	}
 
 	return &circuitBreakerInfo{
-		Id: id,
-		State: stateStruct.State,
+		Id:       id,
+		State:    stateStruct.State,
 		TimeOpen: stateStruct.TimeOpen,
 
-		TotalRequests: requestCount,
-		TotalSuccesses: successCount,
-		TotalFailures: failureCount,
+		TotalRequests:        requestCount,
+		TotalSuccesses:       successCount,
+		TotalFailures:        failureCount,
 		ConsecutiveSuccesses: consecutiveSuccessCount,
-		ConsecutiveFailures: consecutiveFailureCount,
-
+		ConsecutiveFailures:  consecutiveFailureCount,
 	}, nil
 
 }
@@ -248,11 +234,10 @@ func clearTimings(pipe redis.Pipeliner, ctx context.Context, key string, systime
 
 }
 
-
 func registerSuccess(client *redis.Client, ctx context.Context, key string, settings CircuitBreakerSettings) error {
 	pipe := client.Pipeline()
 	stateStruct := StateStruct{
-		State: gocircuit.StateClosed,
+		State:    gocircuit.StateClosed,
 		TimeOpen: time.Time{},
 	}
 	stateStructString, err := StateStructToString(stateStruct)
@@ -260,20 +245,19 @@ func registerSuccess(client *redis.Client, ctx context.Context, key string, sett
 		return err
 	}
 
-
 	systime := time.Now()
 	pipe.Set(ctx, stateKey(settings.Prefix, key), stateStructString, settings.RedisKeyTimeout)
 	pipe.ZAdd(ctx, requestKey(settings.Prefix, key), redis.Z{
 		Member: systime,
-		Score: float64(systime.UnixNano()),
+		Score:  float64(systime.UnixNano()),
 	})
 	pipe.ZAdd(ctx, successKey(settings.Prefix, key), redis.Z{
 		Member: systime,
-		Score: float64(systime.UnixNano()),
+		Score:  float64(systime.UnixNano()),
 	})
 	pipe.ZAdd(ctx, consecutiveSuccessKey(settings.Prefix, key), redis.Z{
 		Member: systime,
-		Score: float64(systime.UnixNano()),
+		Score:  float64(systime.UnixNano()),
 	})
 	pipe.Del(ctx, consecutiveFailureKey(settings.Prefix, key))
 
@@ -289,25 +273,22 @@ func registerSuccess(client *redis.Client, ctx context.Context, key string, sett
 	return nil
 }
 
-
-
 // How we add a failure.
 func registerFailure(client *redis.Client, ctx context.Context, key string, settings CircuitBreakerSettings) error {
 	pipe := client.Pipeline()
 
-
 	systime := time.Now()
 	pipe.ZAdd(ctx, requestKey(settings.Prefix, key), redis.Z{
 		Member: systime,
-		Score: float64(systime.UnixNano()),
+		Score:  float64(systime.UnixNano()),
 	})
 	pipe.ZAdd(ctx, failureKey(settings.Prefix, key), redis.Z{
 		Member: systime,
-		Score: float64(systime.UnixNano()),
+		Score:  float64(systime.UnixNano()),
 	})
 	pipe.ZAdd(ctx, consecutiveFailureKey(settings.Prefix, key), redis.Z{
 		Member: systime,
-		Score: float64(systime.UnixNano()),
+		Score:  float64(systime.UnixNano()),
 	})
 	pipe.Del(ctx, consecutiveSuccessKey(settings.Prefix, key))
 
@@ -325,13 +306,10 @@ func registerFailure(client *redis.Client, ctx context.Context, key string, sett
 	return nil
 }
 
-
 func empty[A any]() A {
 	var a A
 	return a
 }
-
-
 
 func runClosed[A any](client *redis.Client, ctx context.Context, key string, settings CircuitBreakerSettings, action func() (A, error)) (A, error) {
 	out, initialErr := action()
@@ -351,7 +329,7 @@ func setToOpen(client *redis.Client, ctx context.Context, key string, settings C
 	systime := time.Now() // TODO - Use last operation time, rather than now
 
 	state := StateStruct{
-		State: gocircuit.StateOpen,
+		State:    gocircuit.StateOpen,
 		TimeOpen: systime.Add(settings.OpenTimeout),
 	}
 	stateString, err := StateStructToString(state)
@@ -385,7 +363,6 @@ func setToOpen(client *redis.Client, ctx context.Context, key string, settings C
 			settings.OnStateChange(currentState.State, state.State)
 		}
 
-
 		return err
 	}
 
@@ -403,7 +380,7 @@ func setToHalfOpen[A any](client *redis.Client, ctx context.Context, key string,
 	systime := time.Now() // TODO - Use last operation time, rather than now
 
 	state := StateStruct{
-		State: gocircuit.StateHalfOpen,
+		State:    gocircuit.StateHalfOpen,
 		TimeOpen: systime.Add(settings.OpenTimeout),
 	}
 	stateString, err := StateStructToString(state)
@@ -416,7 +393,6 @@ func setToHalfOpen[A any](client *redis.Client, ctx context.Context, key string,
 		if err != nil && err != redis.Nil {
 			return err
 		}
-
 
 		var currentState StateStruct
 		if err != redis.Nil {
@@ -435,7 +411,7 @@ func setToHalfOpen[A any](client *redis.Client, ctx context.Context, key string,
 			pipe.Set(ctx, stateKey(settings.Prefix, key), stateString, settings.RedisKeyTimeout)
 			pipe.ZAdd(ctx, halfOpenKey(settings.Prefix, key), redis.Z{
 				Member: systime,
-				Score: float64(systime.UnixNano()),
+				Score:  float64(systime.UnixNano()),
 			})
 			return nil
 		})
@@ -467,8 +443,6 @@ func setToHalfOpen[A any](client *redis.Client, ctx context.Context, key string,
 
 	return value, initErr, false
 }
-
-
 
 func protectInternal[A any](client *redis.Client, ctx context.Context, key string, settings CircuitBreakerSettings, action func() (A, error)) (A, error, bool) {
 	now := time.Now()
